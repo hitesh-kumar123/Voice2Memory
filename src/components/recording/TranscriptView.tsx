@@ -41,6 +41,21 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
       setAnalysisData(null);
 
       try {
+        // If sample transcript is already provided, skip binary audio decoding
+        if (source.initialTranscript) {
+          const sampleResult: TranscriptResult = {
+            success: true,
+            transcript: source.initialTranscript,
+            language: "en",
+            languageProbability: 1.0,
+            duration: 18.5,
+          };
+          setTranscriptData(sampleResult);
+          setStage("analyzing");
+          await runAnalysis(source.initialTranscript);
+          return;
+        }
+
         const formData = new FormData();
         const ext = source.type === "recording" ? "webm" : source.name.split(".").pop() || "wav";
         const fileName = source.name.includes(".") ? source.name : `${source.name}.${ext}`;

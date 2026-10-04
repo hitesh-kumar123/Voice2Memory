@@ -36,6 +36,7 @@ export default function SampleNoteTester() {
       name: sample.sampleName,
       size: 1024 * 45,
       objectUrl,
+      initialTranscript: sample.text,
     };
 
     setSelectedAudioSource(source);

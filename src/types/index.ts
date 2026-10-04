@@ -115,4 +115,6 @@ export interface AudioSource {
   size: number;
   /** Object URL for <audio> preview — call URL.revokeObjectURL when done */
   objectUrl: string;
+  /** Optional pre-loaded transcript for instant sample testing */
+  initialTranscript?: string;
 }
