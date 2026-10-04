@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { AudioSource, TranscriptResult, AnalysisResult } from "@/types";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import StructuredMemoryResult from "@/components/recording/StructuredMemoryResult";
+import { AlertIcon, RefreshIcon, ArrowRightIcon } from "@/components/ui/icons";
 
 interface TranscriptViewProps {
   source: AudioSource;
@@ -25,7 +26,7 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryTranscriptionCount, setRetryTranscriptionCount] = useState(0);
 
-  // Save memory state (Phase 6 integration)
+  // Save memory state
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -141,7 +142,7 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
     };
   }, [source, retryTranscriptionCount]);
 
-  // Separate handler to retry AI analysis without re-uploading or re-transcribing
+  // Handler to retry AI analysis without re-transcribing
   const handleRetryAnalysis = async () => {
     if (!transcriptData?.transcript) return;
     setStage("analyzing");
@@ -169,7 +170,7 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
     }
   };
 
-  // Save to MongoDB (Phase 6)
+  // Save to MongoDB
   const handleSaveMemory = async () => {
     if (!analysisData || !transcriptData) return;
     setIsSaving(true);
@@ -207,26 +208,26 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
     }
   };
 
-  // ── Render: Progress States ──────────────────────────────────────────────
+  // ── Progress States ──────────────────────────────────────────────
   if (stage === "uploading" || stage === "transcribing" || stage === "analyzing") {
     const stageDetails = {
       uploading: {
-        title: "Uploading audio…",
-        desc: "Preparing voice note for speech-to-text processing.",
+        title: "Uploading audio note…",
+        desc: "Preparing voice recording for deep acoustic parsing.",
       },
       transcribing: {
         title: "Transcribing with Whisper…",
-        desc: "Running local Whisper AI model to generate high-accuracy transcript.",
+        desc: "Running local Whisper AI engine for precise speech-to-text generation.",
       },
       analyzing: {
         title: "Structuring with Google Gemma 2…",
-        desc: "Running open-weight Gemma 2 model to extract actionable tasks, dates, people, and topics.",
+        desc: "Extracting actionable tasks, schedule dates, people, and topics.",
       },
     }[stage];
 
     return (
       <div
-        className="w-full max-w-md flex flex-col items-center justify-center py-12 px-6 rounded-2xl border border-border bg-card shadow-sm text-center gap-5 animate-fade-in"
+        className="w-full max-w-md flex flex-col items-center justify-center py-12 px-6 rounded-2xl border border-border/80 bg-card shadow-sm text-center gap-5 animate-fade-in"
         role="status"
         aria-live="polite"
       >
@@ -246,11 +247,11 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
           <span className={stage === "uploading" ? "text-primary font-bold" : "text-muted-foreground/60"}>
             1. Upload
           </span>
-          <span>→</span>
+          <ArrowRightIcon className="w-3 h-3 opacity-40" />
           <span className={stage === "transcribing" ? "text-primary font-bold" : "text-muted-foreground/60"}>
             2. Transcribe
           </span>
-          <span>→</span>
+          <ArrowRightIcon className="w-3 h-3 opacity-40" />
           <span className={stage === "analyzing" ? "text-primary font-bold" : "text-muted-foreground/60"}>
             3. Structure
           </span>
@@ -259,7 +260,7 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
     );
   }
 
-  // ── Render: Error States ────────────────────────────────────────────────
+  // ── Error States ────────────────────────────────────────────────
   if (stage === "error-transcription" || stage === "error-analysis") {
     const isAnalysisError = stage === "error-analysis";
 
@@ -269,21 +270,8 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
         className="w-full max-w-md flex flex-col gap-4 p-5 rounded-2xl border border-destructive/30 bg-destructive/5 animate-fade-in"
       >
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0 mt-0.5">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
+          <div className="w-8 h-8 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0 mt-0.5 border border-destructive/20">
+            <AlertIcon className="w-4 h-4" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-destructive">
@@ -295,9 +283,8 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
           </div>
         </div>
 
-        {/* If analysis failed, show that transcript was preserved */}
         {isAnalysisError && transcriptData?.transcript && (
-          <div className="p-3 rounded-lg bg-background border border-border text-xs text-muted-foreground">
+          <div className="p-3.5 rounded-xl bg-card border border-border/70 text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">Preserved Transcript:</span>
             <p className="mt-1 line-clamp-2">{transcriptData.transcript}</p>
           </div>
@@ -308,24 +295,26 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
             <button
               type="button"
               onClick={handleRetryAnalysis}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
+              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5"
             >
-              Retry AI analysis
+              <RefreshIcon className="w-3.5 h-3.5" />
+              <span>Retry AI analysis</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={() => setRetryTranscriptionCount((c) => c + 1)}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
+              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5"
             >
-              Retry transcription
+              <RefreshIcon className="w-3.5 h-3.5" />
+              <span>Retry transcription</span>
             </button>
           )}
 
           <button
             type="button"
             onClick={onReset}
-            className="px-4 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+            className="px-4 py-2 rounded-xl border border-border text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors font-medium"
           >
             Start over
           </button>
@@ -334,7 +323,7 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
     );
   }
 
-  // ── Render: Structured Memory Ready ─────────────────────────────────────
+  // ── Structured Memory Ready ─────────────────────────────────────
   if (stage === "ready" && transcriptData && analysisData) {
     return (
       <StructuredMemoryResult

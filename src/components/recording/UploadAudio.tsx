@@ -2,7 +2,13 @@
 
 import { useState, useRef, useCallback, DragEvent } from "react";
 import type { UploadState, AudioSource } from "@/types";
-import { UploadIcon, AudioFileIcon, TrashIcon } from "@/components/ui/icons";
+import {
+  UploadIcon,
+  AudioFileIcon,
+  TrashIcon,
+  AlertIcon,
+  ArrowRightIcon,
+} from "@/components/ui/icons";
 import TranscriptView from "@/components/recording/TranscriptView";
 
 // ─── Constants ────────────────────────────────────────────────────────────
@@ -32,8 +38,6 @@ function formatBytes(bytes: number): string {
 }
 
 function isValidAudioFile(file: File): string | null {
-  // Check MIME type first; fall back to extension check for browsers
-  // that report "application/octet-stream" for audio files
   const mimeOk = ACCEPTED_MIME_TYPES.has(file.type);
   const extOk = /\.(mp3|wav|m4a|webm|ogg|flac)$/i.test(file.name);
 
@@ -46,13 +50,12 @@ function isValidAudioFile(file: File): string | null {
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
     return `File is too large (${formatBytes(file.size)}). Maximum allowed size is ${MAX_SIZE_MB} MB.`;
   }
-  return null; // valid
+  return null;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────
 
 interface UploadAudioProps {
-  /** Called when the user clicks "Process voice". Connect to Whisper API in Phase 4. */
   onProcess?: (source: AudioSource) => void;
 }
 
@@ -76,7 +79,6 @@ export default function UploadAudio({ onProcess }: UploadAudioProps) {
         return;
       }
 
-      // Revoke any previously created object URL
       setAudioSource((prev) => {
         if (prev?.objectUrl) URL.revokeObjectURL(prev.objectUrl);
         return null;
@@ -100,7 +102,6 @@ export default function UploadAudio({ onProcess }: UploadAudioProps) {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) selectFile(file);
-      // Reset input value so the same file can be re-selected if cleared
       e.target.value = "";
     },
     [selectFile]
@@ -148,9 +149,8 @@ export default function UploadAudio({ onProcess }: UploadAudioProps) {
 
   // ── Main UI ───────────────────────────────────────────────────────────
   return (
-    <div className="w-full max-w-sm flex flex-col gap-4">
-
-      {/* Hidden file input — always rendered for ref access */}
+    <div className="w-full max-w-md flex flex-col gap-4">
+      {/* Hidden file input */}
       <input
         ref={inputRef}
         type="file"
@@ -181,18 +181,20 @@ export default function UploadAudio({ onProcess }: UploadAudioProps) {
             }
           }}
           className={[
-            "relative flex flex-col items-center justify-center gap-3",
-            "py-12 px-6 rounded-xl border-2 border-dashed cursor-pointer",
-            "transition-all duration-200 text-center select-none",
+            "relative flex flex-col items-center justify-center gap-3.5",
+            "py-12 px-6 rounded-2xl border-2 border-dashed cursor-pointer",
+            "transition-all duration-200 text-center select-none bg-card/60 backdrop-blur-xs",
             isDragging
-              ? "border-primary bg-accent/60 scale-[1.015]"
-              : "border-border hover:border-primary/50 hover:bg-secondary",
+              ? "border-primary bg-primary/5 scale-[1.01]"
+              : "border-border/80 hover:border-primary/50 hover:bg-secondary/40",
           ].join(" ")}
         >
           <div
             className={[
-              "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
-              isDragging ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground",
+              "w-12 h-12 rounded-xl flex items-center justify-center transition-colors border",
+              isDragging
+                ? "bg-primary/10 text-primary border-primary/30"
+                : "bg-secondary text-muted-foreground border-border/50",
             ].join(" ")}
             aria-hidden="true"
           >
@@ -200,40 +202,26 @@ export default function UploadAudio({ onProcess }: UploadAudioProps) {
           </div>
 
           <div>
-            <p className="text-sm font-medium text-foreground">
-              {isDragging ? "Drop it here" : "Drag & drop your audio file"}
+            <p className="text-sm font-semibold text-foreground">
+              {isDragging ? "Drop audio file to process" : "Drag and drop your audio note"}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               or{" "}
-              <span className="text-primary font-medium underline underline-offset-2">
-                browse files
+              <span className="text-primary font-medium underline underline-offset-4">
+                browse local files
               </span>
             </p>
           </div>
 
-          <p className="text-xs text-muted-foreground/70">{ACCEPTED_LABEL} · Max {MAX_SIZE_MB} MB</p>
+          <p className="text-[11px] text-muted-foreground/70 font-mono tracking-tight">{ACCEPTED_LABEL} · Max {MAX_SIZE_MB} MB</p>
         </div>
       )}
 
       {/* Error message */}
       {error && (
-        <div role="alert" className="flex items-start gap-2 animate-fade-in">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-4 h-4 text-destructive shrink-0 mt-0.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <p className="text-sm text-destructive leading-snug">{error}</p>
+        <div role="alert" className="flex items-center gap-2 p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-destructive animate-fade-in text-xs font-medium">
+          <AlertIcon className="w-4 h-4 shrink-0" />
+          <p className="leading-snug">{error}</p>
         </div>
       )}
 
@@ -241,41 +229,41 @@ export default function UploadAudio({ onProcess }: UploadAudioProps) {
       {state === "selected" && audioSource && (
         <div className="flex flex-col gap-4 animate-fade-in">
           {/* File info row */}
-          <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-secondary">
+          <div className="flex items-center gap-3 p-4 rounded-2xl border border-border/80 bg-card">
             <div
-              className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center shrink-0"
+              className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20"
               aria-hidden="true"
             >
-              <AudioFileIcon className="w-5 h-5 text-primary" />
+              <AudioFileIcon className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate" title={audioSource.name}>
+              <p className="text-sm font-semibold text-foreground truncate" title={audioSource.name}>
                 {audioSource.name}
               </p>
-              <p className="text-xs text-muted-foreground">{formatBytes(audioSource.size)}</p>
+              <p className="text-xs text-muted-foreground font-mono">{formatBytes(audioSource.size)}</p>
             </div>
             <button
               type="button"
               id="upload-clear-btn"
               onClick={clearFile}
               aria-label={`Remove ${audioSource.name}`}
-              className="p-1.5 rounded-md text-muted-foreground
+              className="p-2 rounded-lg text-muted-foreground
                          hover:text-destructive hover:bg-destructive/10
-                         transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                         transition-colors"
             >
               <TrashIcon className="w-4 h-4" />
             </button>
           </div>
 
           {/* Audio preview */}
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Preview
+          <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-border/60 bg-secondary/20">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Audio Waveform Preview
             </p>
             <audio
               controls
               src={audioSource.objectUrl}
-              className="w-full rounded-lg"
+              className="w-full h-9 rounded-lg"
               aria-label={`Audio preview: ${audioSource.name}`}
             />
           </div>
@@ -286,23 +274,23 @@ export default function UploadAudio({ onProcess }: UploadAudioProps) {
               type="button"
               id="upload-change-btn"
               onClick={() => inputRef.current?.click()}
-              className="px-4 py-2.5 rounded-lg border border-border text-sm
+              className="px-4 py-2.5 rounded-xl border border-border text-sm
                          text-muted-foreground hover:bg-secondary hover:text-foreground
-                         transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                         transition-colors font-medium"
             >
-              Change file
+              Choose different file
             </button>
             <button
               type="button"
               id="upload-process-btn"
               onClick={handleProcess}
-              className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground
-                         text-sm font-medium
-                         hover:opacity-90 active:scale-95
-                         transition-all duration-150
-                         focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground
+                         text-sm font-semibold shadow-sm
+                         hover:opacity-90 active:scale-98
+                         transition-all duration-150 flex items-center justify-center gap-2"
             >
-              Process voice →
+              <span>Process with Gemma 2</span>
+              <ArrowRightIcon className="w-4 h-4" />
             </button>
           </div>
         </div>

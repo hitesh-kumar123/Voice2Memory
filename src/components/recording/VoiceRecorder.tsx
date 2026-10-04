@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useSyncExternalStore } from "react";
 import type { RecordingState, RecordingError, AudioSource } from "@/types";
-import { MicIcon, StopIcon, TrashIcon } from "@/components/ui/icons";
+import { MicIcon, StopIcon, TrashIcon, ArrowRightIcon, SparklesIcon } from "@/components/ui/icons";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import TranscriptView from "@/components/recording/TranscriptView";
 
@@ -28,11 +28,10 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** Map a RecordingError to a user-facing message + action hint */
 const ERROR_MESSAGES: Record<RecordingError, { title: string; hint: string }> = {
   "permission-denied": {
     title: "Microphone access denied",
-    hint: "Click the lock icon in your browser's address bar and allow microphone access, then try again.",
+    hint: "Click the lock icon in your browser address bar and allow microphone access, then try again.",
   },
   "not-supported": {
     title: "Recording not supported",
@@ -52,7 +51,6 @@ const ERROR_MESSAGES: Record<RecordingError, { title: string; hint: string }> = 
   },
 };
 
-/** Detect whether MediaRecorder is available in this browser */
 function isBrowserSupported(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -61,7 +59,6 @@ function isBrowserSupported(): boolean {
   );
 }
 
-/** Classify a getUserMedia / MediaRecorder error into our error type */
 function classifyError(err: unknown): RecordingError {
   if (!(err instanceof Error)) return "unknown";
   const name = err.name;
@@ -71,8 +68,6 @@ function classifyError(err: unknown): RecordingError {
   if (name === "NotSupportedError" || message.includes("not supported")) return "not-supported";
   return "unknown";
 }
-
-// ─── Sub-components ───────────────────────────────────────────────────────
 
 function ErrorBanner({
   error,
@@ -85,7 +80,7 @@ function ErrorBanner({
   return (
     <div
       role="alert"
-      className="w-full max-w-sm rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex flex-col gap-2 animate-fade-in"
+      className="w-full max-w-sm rounded-2xl border border-destructive/30 bg-destructive/5 p-4 flex flex-col gap-2 animate-fade-in"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -96,7 +91,7 @@ function ErrorBanner({
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss error"
-          className="shrink-0 mt-0.5 text-muted-foreground hover:text-foreground transition-colors"
+          className="shrink-0 mt-0.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -116,15 +111,13 @@ function ErrorBanner({
       <button
         type="button"
         onClick={onDismiss}
-        className="text-xs font-medium text-primary hover:underline underline-offset-2 text-left"
+        className="text-xs font-semibold text-primary hover:underline underline-offset-4 text-left cursor-pointer"
       >
         Try again
       </button>
     </div>
   );
 }
-
-// ─── Main component ───────────────────────────────────────────────────────
 
 interface VoiceRecorderProps {
   onProcess?: (source: AudioSource) => void;
@@ -143,7 +136,6 @@ export default function VoiceRecorder({ onProcess }: VoiceRecorderProps) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Revoke object URL on unmount to avoid memory leaks
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -205,7 +197,6 @@ export default function VoiceRecorder({ onProcess }: VoiceRecorderProps) {
         };
         setAudioSource(source);
         setState("done");
-        // Release the mic
         streamRef.current?.getTracks().forEach((t) => t.stop());
       };
 
@@ -263,42 +254,37 @@ export default function VoiceRecorder({ onProcess }: VoiceRecorderProps) {
     onProcess?.(audioSource);
   }, [audioSource, onProcess]);
 
-  // ── Render: loading (waiting for hydration / browser check) ─────────────
   if (supported === null) {
     return (
       <div className="w-full max-w-sm flex items-center justify-center py-8">
-        <LoadingSpinner size="md" label="Checking browser support…" />
+        <LoadingSpinner size="md" label="Checking audio hardware…" />
       </div>
     );
   }
 
-  // ── Render: browser not supported ──────────────────────────────────────
   if (!supported) {
     return (
       <div
         role="alert"
-        className="w-full max-w-sm rounded-xl border border-border bg-secondary p-6 text-center flex flex-col gap-3"
+        className="w-full max-w-sm rounded-2xl border border-border bg-secondary p-6 text-center flex flex-col gap-3"
       >
         <p className="text-sm font-semibold text-foreground">Recording not available</p>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Your browser doesn&apos;t support audio recording. Try Chrome, Firefox, or Edge, or
-          use the upload option below.
+          Your browser doesn&apos;t support direct audio capture. Please use the audio file upload option below.
         </p>
       </div>
     );
   }
 
-  // ── Render: live Whisper transcription ──────────────────────────────
   if (state === "processing" && audioSource) {
     return <TranscriptView source={audioSource} onReset={reset} />;
   }
 
-  // ── Render: main recorder ───────────────────────────────────────────────
   return (
     <div className="flex flex-col items-center gap-7 w-full max-w-sm">
       {/* Button ring area */}
       <div className="relative flex items-center justify-center" aria-live="polite">
-        {/* Pulse rings — recording only — pointer-events-none ensures it NEVER blocks clicks */}
+        {/* Pulse rings during recording */}
         {state === "recording" && (
           <>
             <div
@@ -312,7 +298,7 @@ export default function VoiceRecorder({ onProcess }: VoiceRecorderProps) {
           </>
         )}
 
-        {/* Idle */}
+        {/* Idle Button */}
         {(state === "idle" || state === "error") && (
           <button
             id="recorder-start-btn"
@@ -320,27 +306,27 @@ export default function VoiceRecorder({ onProcess }: VoiceRecorderProps) {
             onClick={startRecording}
             aria-label="Start recording"
             className="relative z-20 w-24 h-24 rounded-full bg-primary text-primary-foreground
-                       flex items-center justify-center shadow-md cursor-pointer
-                       hover:opacity-90 hover:shadow-lg active:scale-95
+                       flex items-center justify-center shadow-lg shadow-primary/25 cursor-pointer
+                       hover:bg-primary/90 hover:scale-105 active:scale-95
                        transition-all duration-200
                        focus-visible:ring-4 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <MicIcon className="w-10 h-10" />
+            <MicIcon className="w-9 h-9" />
           </button>
         )}
 
-        {/* Requesting permission */}
+        {/* Requesting Permission */}
         {state === "requesting" && (
           <div
             className="relative z-20 w-24 h-24 rounded-full bg-primary/20 border-2 border-primary/40
                        flex items-center justify-center"
-            aria-label="Requesting microphone permission"
+            aria-label="Requesting microphone access"
           >
-            <LoadingSpinner size="md" label="Requesting microphone access" />
+            <LoadingSpinner size="md" label="Requesting microphone" />
           </div>
         )}
 
-        {/* Recording — Large Clickable Stop Button */}
+        {/* Recording — Large Active Stop Button */}
         {state === "recording" && (
           <button
             id="recorder-stop-btn"
@@ -348,41 +334,41 @@ export default function VoiceRecorder({ onProcess }: VoiceRecorderProps) {
             onClick={stopRecording}
             aria-label="Stop recording"
             className="relative z-20 w-24 h-24 rounded-full bg-destructive text-white
-                       flex flex-col items-center justify-center gap-1 shadow-lg cursor-pointer
+                       flex flex-col items-center justify-center gap-1 shadow-xl shadow-destructive/25 cursor-pointer
                        hover:opacity-95 hover:scale-105 active:scale-95
                        transition-all duration-150 animate-pulse
                        focus-visible:ring-4 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <StopIcon className="w-9 h-9" />
+            <StopIcon className="w-8 h-8" />
           </button>
         )}
 
-        {/* Done */}
+        {/* Done / Complete */}
         {state === "done" && (
           <div
-            className="relative z-20 w-24 h-24 rounded-full bg-accent border-2 border-primary/20
-                       flex items-center justify-center"
+            className="relative z-20 w-24 h-24 rounded-full bg-accent border-2 border-primary/30
+                       flex items-center justify-center shadow-xs"
             aria-label="Recording complete"
           >
-            <MicIcon className="w-10 h-10 text-primary" />
+            <MicIcon className="w-9 h-9 text-primary" />
           </div>
         )}
       </div>
 
-      {/* Status label / Stop Action Helper */}
+      {/* Status label & direct stop bar */}
       <div
-        className="flex flex-col items-center gap-1 min-h-[2rem]"
+        className="flex flex-col items-center gap-1.5 min-h-[2.5rem]"
         aria-live="polite"
         aria-atomic="true"
       >
         {state === "idle" && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             Tap microphone to start recording
           </p>
         )}
 
         {state === "requesting" && (
-          <p className="text-sm text-muted-foreground">Waiting for mic permission…</p>
+          <p className="text-xs text-muted-foreground">Awaiting browser microphone permission…</p>
         )}
 
         {state === "recording" && (
@@ -398,23 +384,23 @@ export default function VoiceRecorder({ onProcess }: VoiceRecorderProps) {
               >
                 {formatTime(elapsed)}
               </span>
-              <span className="text-sm text-muted-foreground">Recording…</span>
+              <span className="text-xs text-muted-foreground">Recording active</span>
             </div>
 
-            {/* Direct text stop button */}
             <button
               type="button"
               onClick={stopRecording}
-              className="px-3 py-1 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 text-xs font-semibold transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 text-xs font-semibold transition-colors cursor-pointer border border-destructive/20"
             >
-              ⏹ Tap here to finish recording
+              <StopIcon className="w-3 h-3" />
+              <span>Tap to finish</span>
             </button>
           </div>
         )}
 
         {state === "done" && (
-          <p className="text-sm text-muted-foreground">
-            {audioSource ? `${formatBytes(audioSource.size)} · ${formatTime(elapsed)}` : "Recording complete"}
+          <p className="text-xs font-mono font-medium text-muted-foreground">
+            {audioSource ? `${formatBytes(audioSource.size)} · ${formatTime(elapsed)}` : "Audio captured"}
           </p>
         )}
       </div>
@@ -424,49 +410,48 @@ export default function VoiceRecorder({ onProcess }: VoiceRecorderProps) {
         <ErrorBanner error={error} onDismiss={reset} />
       )}
 
-      {/* Playback + actions — shown after recording */}
+      {/* Playback & Action Bar */}
       {state === "done" && audioSource && (
-        <div className="w-full flex flex-col gap-4 animate-fade-in">
-          {/* Audio preview */}
+        <div className="w-full flex flex-col gap-4 animate-fade-in p-5 rounded-2xl bg-secondary/30 border border-border/80">
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Audio Preview
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Audio Recording Preview
             </p>
             <audio
               controls
               src={audioSource.objectUrl}
-              className="w-full rounded-lg"
+              className="w-full rounded-xl"
               aria-label="Your recording preview"
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
             <button
               id="recorder-delete-btn"
               type="button"
               onClick={reset}
               aria-label="Delete recording and start over"
-              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg
-                         border border-border text-sm text-muted-foreground
-                         hover:bg-destructive/5 hover:text-destructive hover:border-destructive/30
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl
+                         border border-border text-xs font-semibold text-muted-foreground
+                         hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30
                          transition-colors focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
             >
-              <TrashIcon className="w-4 h-4" />
-              Delete
+              <TrashIcon className="w-3.5 h-3.5" />
+              <span>Discard</span>
             </button>
 
             <button
               id="recorder-process-btn"
               type="button"
               onClick={handleProcess}
-              className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground
-                         text-sm font-semibold shadow-sm
-                         hover:opacity-90 active:scale-95
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground
+                         text-xs font-semibold shadow-xs
+                         hover:bg-primary/90 active:scale-95
                          transition-all duration-150 cursor-pointer
                          focus-visible:ring-2 focus-visible:ring-ring"
             >
-              Process voice with Gemma 2 →
+              <SparklesIcon className="w-3.5 h-3.5" />
+              <span>Extract Memories with Gemma 2</span>
             </button>
           </div>
         </div>

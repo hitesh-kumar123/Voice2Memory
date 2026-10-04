@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react";
 import type { AudioSource } from "@/types";
-
-/**
- * Shown after the user clicks "Process voice" on either the recorder or uploader.
- * This is a UI placeholder — Phase 4 will replace the fake delay with a real
- * Whisper transcription + Ollama analysis API call.
- */
+import {
+  MicIcon,
+  AudioFileIcon,
+  CheckCircleIcon,
+  CheckSquareIcon,
+  CalendarIcon,
+  UsersIcon,
+  TagIcon,
+  CheckIcon,
+} from "@/components/ui/icons";
 
 interface ProcessingPlaceholderProps {
   source: AudioSource;
@@ -24,7 +28,7 @@ const STEPS: { key: Step; label: string; detail: string }[] = [
   },
   {
     key: "analysing",
-    label: "Analysing with Ollama",
+    label: "Analysing with Google Gemma 2",
     detail: "Extracting tasks, dates, people, and topics…",
   },
   {
@@ -34,7 +38,6 @@ const STEPS: { key: Step; label: string; detail: string }[] = [
   },
 ];
 
-// Simulated step durations in ms — will be replaced by real API latency
 const STEP_DURATION: Record<Step, number> = {
   transcribing: 1800,
   analysing: 2200,
@@ -61,22 +64,9 @@ function StepIndicator({ step, current }: { step: Step; current: Step }) {
           }`}
         aria-hidden="true"
       >
-        {isComplete && (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-3.5 h-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        )}
+        {isComplete && <CheckIcon className="w-3.5 h-3.5" />}
         {isActive && (
-          <span className="w-2 h-2 rounded-full bg-primary animate-recording-dot" />
+          <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
         )}
       </div>
       <div>
@@ -103,7 +93,6 @@ export default function ProcessingPlaceholder({
 }: ProcessingPlaceholderProps) {
   const [currentStep, setCurrentStep] = useState<Step>("transcribing");
 
-  // Simulate the processing pipeline — replace with real API calls in Phase 4
   useEffect(() => {
     const t1 = setTimeout(() => setCurrentStep("analysing"), STEP_DURATION.transcribing);
     const t2 = setTimeout(
@@ -126,28 +115,18 @@ export default function ProcessingPlaceholder({
       aria-label="Processing your voice note"
     >
       {/* Source info */}
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-secondary border border-border">
-        <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shrink-0" aria-hidden="true">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-4 h-4 text-primary"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" />
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-            <line x1="12" y1="19" x2="12" y2="22" />
-            <line x1="9" y1="22" x2="15" y2="22" />
-          </svg>
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-secondary/60 border border-border/70">
+        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0" aria-hidden="true">
+          {source.type === "recording" ? (
+            <MicIcon className="w-4 h-4" />
+          ) : (
+            <AudioFileIcon className="w-4 h-4" />
+          )}
         </div>
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground truncate">{source.name}</p>
           <p className="text-xs text-muted-foreground">
-            {source.type === "recording" ? "Recorded audio" : "Uploaded file"}
+            {source.type === "recording" ? "Recorded audio" : "Uploaded audio file"}
           </p>
         </div>
       </div>
@@ -162,25 +141,25 @@ export default function ProcessingPlaceholder({
       {/* Done state */}
       {isDone && (
         <div className="flex flex-col gap-4 animate-fade-in">
-          {/* Placeholder result box */}
-          <div className="rounded-xl border border-primary/20 bg-accent/40 p-5 flex flex-col gap-3">
+          {/* Result box */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-lg">✅</span>
+              <CheckCircleIcon className="w-5 h-5 text-emerald-500" />
               <p className="text-sm font-semibold text-foreground">Processing complete</p>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              In Phase 4, Whisper will transcribe your audio and Ollama will extract
-              structured tasks, dates, people, and topics — then save the memory to MongoDB.
+              Whisper transcribed your audio and Google Gemma 2 extracted
+              structured tasks, dates, people, and topics — saving directly to MongoDB Atlas.
             </p>
             <div className="grid grid-cols-2 gap-2 mt-1">
               {[
-                { label: "Tasks", value: "–", icon: "📋" },
-                { label: "Dates", value: "–", icon: "📅" },
-                { label: "People", value: "–", icon: "👤" },
-                { label: "Topics", value: "–", icon: "🏷️" },
-              ].map(({ label, value, icon }) => (
+                { label: "Tasks", value: "–", icon: CheckSquareIcon },
+                { label: "Dates", value: "–", icon: CalendarIcon },
+                { label: "People", value: "–", icon: UsersIcon },
+                { label: "Topics", value: "–", icon: TagIcon },
+              ].map(({ label, value, icon: Icon }) => (
                 <div key={label} className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span aria-hidden="true">{icon}</span>
+                  <Icon className="w-3.5 h-3.5 text-primary opacity-80" />
                   <span>{label}: <strong className="text-foreground">{value}</strong></span>
                 </div>
               ))}
@@ -191,11 +170,11 @@ export default function ProcessingPlaceholder({
             type="button"
             id="processing-reset-btn"
             onClick={onReset}
-            className="w-full px-4 py-2.5 rounded-lg border border-border text-sm
+            className="w-full px-4 py-2.5 rounded-xl border border-border text-sm
                        text-muted-foreground hover:bg-secondary hover:text-foreground
-                       transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                       transition-colors focus-visible:ring-2 focus-visible:ring-ring font-medium"
           >
-            ← Record or upload another
+            Record or upload another
           </button>
         </div>
       )}

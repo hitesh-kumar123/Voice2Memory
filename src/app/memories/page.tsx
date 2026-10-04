@@ -2,10 +2,19 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
 import MemoryCard from "@/components/memory/MemoryCard";
 import type { Memory, LoadingState } from "@/types";
 import Link from "next/link";
-import { MicIcon } from "@/components/ui/icons";
+import {
+  MicIcon,
+  SearchIcon,
+  CloseIcon,
+  TrashIcon,
+  RefreshIcon,
+  TagIcon,
+  SparklesIcon,
+} from "@/components/ui/icons";
 
 export default function MemoriesPage() {
   const [memories, setMemories] = useState<Memory[]>([]);
@@ -108,32 +117,36 @@ export default function MemoriesPage() {
   }, [memories, searchQuery, selectedTopic]);
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20">
       <Header />
       <main
         id="memories-main"
-        className="flex-1 max-w-5xl mx-auto w-full px-6 py-12"
+        className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-12"
       >
         {/* Page Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              All Memories
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-2 border border-primary/20">
+              <SparklesIcon className="w-3.5 h-3.5" />
+              <span>MongoDB Atlas Vault</span>
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Saved Memories
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Search and organize your extracted voice notes.
+              Search, filter, and review your AI-extracted voice intelligence notes.
             </p>
           </div>
 
           <Link
             id="memories-record-new-btn"
             href="/record"
-            className="self-start sm:self-center inline-flex items-center gap-2 px-4 py-2.5 rounded-xl
+            className="self-start sm:self-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
                        bg-primary text-primary-foreground text-sm font-semibold
-                       hover:opacity-90 active:scale-95 transition-all shadow-sm"
+                       hover:opacity-90 active:scale-98 transition-all shadow-sm"
           >
             <MicIcon className="w-4 h-4" />
-            <span>New voice note</span>
+            <span>Capture note</span>
           </Link>
         </div>
 
@@ -145,46 +158,34 @@ export default function MemoriesPage() {
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search across title, summary, tasks, people, or topics…"
+              placeholder="Search by title, summary, tasks, people, or topics…"
               aria-label="Search memories"
-              className="w-full px-4 py-3 pl-11 rounded-xl border border-border bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-xs"
+              className="w-full px-4 py-3 pl-11 rounded-xl border border-border/80 bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-xs"
             />
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
+            <SearchIcon className="w-4 h-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
 
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
                 aria-label="Clear search query"
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-md"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             )}
           </div>
 
           {/* Topic Pills */}
           {allTopics.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => setSelectedTopic(null)}
-                className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+                className={`text-xs px-3.5 py-1.5 rounded-lg font-medium transition-all ${
                   selectedTopic === null
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                    : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary border border-border/60"
                 }`}
               >
                 All topics ({memories.length})
@@ -196,13 +197,14 @@ export default function MemoriesPage() {
                   onClick={() =>
                     setSelectedTopic((prev) => (prev === topic ? null : topic))
                   }
-                  className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+                  className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
                     selectedTopic === topic
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary border border-border/60"
                   }`}
                 >
-                  #{topic}
+                  <TagIcon className="w-3 h-3 opacity-60" />
+                  <span>{topic}</span>
                 </button>
               ))}
             </div>
@@ -215,7 +217,7 @@ export default function MemoriesPage() {
             {[1, 2, 3, 4, 5, 6].map((n) => (
               <div
                 key={n}
-                className="bg-card rounded-xl p-5 border border-border flex flex-col gap-3"
+                className="bg-card rounded-2xl p-5 border border-border/80 flex flex-col gap-3 shadow-xs"
               >
                 <div className="flex justify-between">
                   <div className="skeleton h-3 w-20 rounded" />
@@ -233,37 +235,38 @@ export default function MemoriesPage() {
         {loadingState === "error" && (
           <div
             role="alert"
-            className="flex flex-col items-center justify-center py-20 text-center gap-3"
+            className="flex flex-col items-center justify-center py-20 text-center gap-3 p-8 rounded-2xl border border-destructive/20 bg-destructive/5"
           >
             <p className="text-base font-semibold text-destructive">
-              Failed to load memories
+              Failed to load memories from MongoDB Atlas
             </p>
-            <p className="text-xs text-muted-foreground max-w-xs">
-              Ensure your MongoDB connection is active.
+            <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+              Verify your connection string and cluster status.
             </p>
             <button
               type="button"
               onClick={fetchMemories}
-              className="mt-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium"
+              className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold flex items-center gap-1.5"
             >
-              Retry
+              <RefreshIcon className="w-3.5 h-3.5" />
+              <span>Retry Connection</span>
             </button>
           </div>
         )}
 
         {/* Empty State (No memories saved yet) */}
         {loadingState === "success" && memories.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+          <div className="flex flex-col items-center justify-center py-24 text-center gap-4 p-8 rounded-2xl border border-dashed border-border/80 bg-card/40">
             <div
-              className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center"
+              className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20"
               aria-hidden="true"
             >
-              <MicIcon className="w-8 h-8 text-accent-foreground" />
+              <MicIcon className="w-8 h-8" />
             </div>
-            <h2 className="font-semibold text-foreground text-xl">
-              No memories saved yet
+            <h2 className="font-bold text-foreground text-xl">
+              No memories in your vault yet
             </h2>
-            <p className="text-sm text-muted-foreground max-w-xs">
+            <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
               Record your first voice note or upload an audio clip to extract structured memories.
             </p>
             <Link
@@ -271,10 +274,10 @@ export default function MemoriesPage() {
               href="/record"
               className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
                          bg-primary text-primary-foreground text-sm font-semibold
-                         hover:opacity-90 active:scale-95 transition-all shadow-sm"
+                         hover:opacity-90 active:scale-98 transition-all shadow-sm"
             >
               <MicIcon className="w-4 h-4" />
-              Record your first note
+              <span>Record your first note</span>
             </Link>
           </div>
         )}
@@ -283,12 +286,12 @@ export default function MemoriesPage() {
         {loadingState === "success" &&
           memories.length > 0 &&
           filteredMemories.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+            <div className="flex flex-col items-center justify-center py-20 text-center gap-3 p-8 rounded-2xl border border-dashed border-border/80 bg-card/30">
               <p className="text-base font-semibold text-foreground">
                 No memories match &quot;{searchQuery || selectedTopic}&quot;
               </p>
               <p className="text-xs text-muted-foreground">
-                Try searching for a different keyword or topic tag.
+                Try searching for a different keyword or tag.
               </p>
               <button
                 type="button"
@@ -296,9 +299,9 @@ export default function MemoriesPage() {
                   setSearchQuery("");
                   setSelectedTopic(null);
                 }}
-                className="mt-2 text-xs font-medium text-primary hover:underline underline-offset-2"
+                className="mt-2 text-xs font-semibold text-primary hover:underline underline-offset-4"
               >
-                Clear filters
+                Clear all filters
               </button>
             </div>
           )}
@@ -317,7 +320,7 @@ export default function MemoriesPage() {
                 {/* Quick Delete action button */}
                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   {deleteConfirmId === memory._id ? (
-                    <div className="flex items-center gap-1.5 bg-background/95 border border-destructive/40 p-1 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-1.5 bg-card border border-destructive/40 p-1 rounded-lg shadow-sm">
                       <span className="text-[11px] text-destructive font-medium pl-1">
                         Delete?
                       </span>
@@ -334,7 +337,7 @@ export default function MemoriesPage() {
                         onClick={() => setDeleteConfirmId(null)}
                         className="px-1.5 py-0.5 rounded text-muted-foreground text-[11px] hover:text-foreground"
                       >
-                        ✕
+                        <CloseIcon className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ) : (
@@ -348,19 +351,7 @@ export default function MemoriesPage() {
                       title="Delete memory"
                       className="p-1.5 rounded-lg bg-card/90 border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shadow-xs"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-3.5 h-3.5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                      </svg>
+                      <TrashIcon className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
@@ -369,6 +360,6 @@ export default function MemoriesPage() {
           </div>
         )}
       </main>
-    </>
+    </div>
   );
 }

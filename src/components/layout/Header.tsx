@@ -1,50 +1,53 @@
 import Link from "next/link";
-import { MicIcon } from "@/components/ui/icons";
+import { MicIcon, PlusIcon, SparklesIcon } from "@/components/ui/icons";
 
 export default function Header() {
   return (
     <header
-      className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border"
+      className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/80 transition-all"
       role="banner"
     >
       <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Logo */}
+        {/* Logo & Brand */}
         <Link
           href="/"
           id="header-logo"
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2.5 group hover:opacity-95 transition-opacity"
           aria-label="Voice2Memory home"
         >
-          <span
-            className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary"
-            aria-hidden="true"
-          >
-            <MicIcon className="w-4 h-4 text-white" />
-          </span>
-          <span className="font-semibold text-foreground tracking-tight">
-            Voice2Memory
-          </span>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary text-primary-foreground shadow-xs shadow-primary/20 group-hover:scale-105 transition-transform">
+            <MicIcon className="w-4 h-4" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-foreground tracking-tight text-sm leading-tight flex items-center gap-1.5">
+              Voice2Memory
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-accent text-accent-foreground">
+                Gemma 2
+              </span>
+            </span>
+          </div>
         </Link>
 
-        {/* Nav */}
-        <nav aria-label="Main navigation" className="flex items-center gap-1">
+        {/* Navigation Actions */}
+        <nav aria-label="Main navigation" className="flex items-center gap-2">
           <Link
             id="nav-memories"
             href="/memories"
-            className="px-3 py-1.5 text-sm text-muted-foreground rounded-md
+            className="px-3.5 py-1.5 text-xs font-medium text-muted-foreground rounded-lg
                        hover:bg-secondary hover:text-foreground transition-colors"
           >
-            Memories
+            All Memories
           </Link>
           <Link
             id="nav-new-note"
             href="/record"
-            className="ml-2 px-4 py-2 text-sm font-medium rounded-lg
-                       bg-primary text-primary-foreground
-                       hover:opacity-90 active:scale-95
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg
+                       bg-primary text-primary-foreground shadow-xs shadow-primary/25
+                       hover:bg-primary/90 active:scale-95
                        transition-all duration-150 focus-visible:ring-2 focus-visible:ring-ring"
           >
-            + New note
+            <PlusIcon className="w-3.5 h-3.5" />
+            <span>New Note</span>
           </Link>
         </nav>
       </div>
