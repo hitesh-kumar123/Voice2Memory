@@ -1,4 +1,10 @@
 import mongoose from "mongoose";
+import dns from "dns";
+
+// Ensure DNS resolution handles SRV records reliably across operating systems
+if (typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/voice2memory";
 
@@ -31,7 +37,7 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
   if (!cached.promise) {
     const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 8000,
       socketTimeoutMS: 45000,
       maxPoolSize: 10,
       minPoolSize: 2,
@@ -40,7 +46,8 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
     cached.promise = mongoose
       .connect(MONGODB_URI, opts)
       .then((m) => {
-        const isAtlas = MONGODB_URI.includes("mongodb+srv://") || MONGODB_URI.includes("mongodb.net");
+        const isAtlas =
+          MONGODB_URI.includes("mongodb+srv://") || MONGODB_URI.includes("mongodb.net");
         console.log(`[MongoDB] Connected successfully to ${isAtlas ? "MongoDB Atlas" : "Local MongoDB"}`);
         return m;
       })
@@ -75,7 +82,8 @@ export async function getDatabaseStatus(): Promise<{
   try {
     const mongooseInstance = await connectToDatabase();
     const conn = mongooseInstance.connection;
-    const isAtlas = MONGODB_URI.includes("mongodb+srv://") || MONGODB_URI.includes("mongodb.net");
+    const isAtlas =
+      MONGODB_URI.includes("mongodb+srv://") || MONGODB_URI.includes("mongodb.net");
 
     return {
       connected: conn.readyState === 1,
@@ -85,7 +93,8 @@ export async function getDatabaseStatus(): Promise<{
       host: conn.host,
     };
   } catch (err: unknown) {
-    const isAtlas = MONGODB_URI.includes("mongodb+srv://") || MONGODB_URI.includes("mongodb.net");
+    const isAtlas =
+      MONGODB_URI.includes("mongodb+srv://") || MONGODB_URI.includes("mongodb.net");
     return {
       connected: false,
       isAtlas,
