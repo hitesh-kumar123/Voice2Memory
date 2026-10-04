@@ -1,9 +1,19 @@
 import mongoose from "mongoose";
 import dns from "dns";
 
-// Ensure DNS resolution handles SRV records reliably across operating systems
+// Fix for Windows / ISP DNS resolving mongodb+srv SRV records
+try {
+  dns.setServers(["8.8.8.8", "1.1.1.1", "8.8.4.4"]);
+} catch (e) {
+  // Ignore if custom dns set is restricted
+}
+
 if (typeof dns.setDefaultResultOrder === "function") {
-  dns.setDefaultResultOrder("ipv4first");
+  try {
+    dns.setDefaultResultOrder("ipv4first");
+  } catch (e) {
+    // Ignore
+  }
 }
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/voice2memory";
@@ -37,11 +47,18 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
   if (!cached.promise) {
     const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       maxPoolSize: 10,
       minPoolSize: 2,
     };
+
+    // Ensure public DNS resolver is set for SRV lookup
+    try {
+      dns.setServers(["8.8.8.8", "1.1.1.1"]);
+    } catch {
+      // Ignore
+    }
 
     cached.promise = mongoose
       .connect(MONGODB_URI, opts)
