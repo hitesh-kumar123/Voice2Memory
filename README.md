@@ -6,7 +6,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16.3-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![Google Gemma 2](https://img.shields.io/badge/AI%20Brain-Google%20Gemma%202-blue?style=flat&logo=google)](https://ai.google.dev/gemma)
 [![MongoDB Atlas](https://img.shields.io/badge/Database-MongoDB%20Atlas-green?style=flat&logo=mongodb)](https://www.mongodb.com/atlas)
-[![DigitalOcean](https://img.shields.io/badge/Deploy-DigitalOcean-0080FF?style=flat&logo=digitalocean)](https://www.digitalocean.com/)
+[![Render](https://img.shields.io/badge/Deploy-Render-46E3B7?style=flat&logo=render)](https://render.com/)
 [![OpenAI Whisper](https://img.shields.io/badge/Speech-Faster--Whisper-orange?style=flat&logo=openai)](https://github.com/SYSTRAN/faster-whisper)
 
 ---
@@ -14,7 +14,7 @@
 ## Overview
 
 ### The Friend Problem
-My friend records dozens of voice notes throughout the week—while commuting, walking between meetings, or capturing sudden startup ideas and errands.
+My friend records dozens of voice notes throughout the week—while commuting, walking between meetings, or capturing sudden startup ideas and daily errands.
 
 A typical spoken recording sounds like this:
 > *"Hey Sarah, I'm heading over to the office now. Please remember to finalize the Q4 investor pitch deck with Alex by Thursday at 4 PM. We also need to schedule the follow-up meeting with Priya for next Monday afternoon. On my way back I have to order a new microphone for our podcast setup and email the contract to Tom."*
@@ -49,7 +49,7 @@ flowchart TD
     User([User Voice Note / Upload]) -->|Browser Mic / Audio File| UI[Voice2Memory Web Studio\nNext.js 16 + React 19]
     UI -->|POST /api/transcribe\nAudio Buffer| Whisper[Faster-Whisper int8\nLocal CTranslate2 Engine]
     Whisper -->|Raw Transcript + Metadata| UI
-    UI -->|POST /api/analyze\nTranscript + Gemma 2 Prompt| Gemma[Google Gemma 2\nLocal Ollama / DO GPU Droplet]
+    UI -->|POST /api/analyze\nTranscript + Gemma 2 Prompt| Gemma[Google Gemma 2\nLocal Ollama / Remote Endpoint]
     Gemma -->|Structured Memory JSON| UI
     UI -->|POST /api/memories\nStructured Record| Atlas[(MongoDB Atlas Cluster\nWeighted Text Indexes)]
     Atlas -->|Real-Time Query & Search| UI
@@ -75,7 +75,7 @@ Personal voice recordings contain sensitive thoughts, client details, financial 
 Google's open-weight **Gemma 2** (`gemma2:2b`) serves as the core intelligence engine of Voice2Memory:
 
 - **Model Identifier**: `gemma2:2b` (Google Gemma 2, 2-billion parameter instruction-tuned model with sliding window attention and logit soft-capping).
-- **Execution Environment**: Runs locally via **Ollama** or remotely on a **DigitalOcean GPU Droplet / OpenAI-compatible endpoint**.
+- **Execution Environment**: Runs locally via **Ollama** or remotely via OpenAI-compatible Gemma endpoints.
 - **Instruction Prompt Template**:
   ```text
   <start_of_turn>user
@@ -106,19 +106,15 @@ Voice2Memory uses **MongoDB Atlas** as its centralized, persistent memory layer:
 
 ---
 
-## DigitalOcean & Cloud Deployment
+## Cloud Deployment & Containerization
 
 Voice2Memory includes complete production deployment configurations:
 
-1. **DigitalOcean App Platform**:
-   - Production specification in [`.do/app.yaml`](file:///.do/app.yaml) for zero-downtime containerized deployment.
-2. **DigitalOcean GPU Droplet Automated Setup**:
-   - Shell provisioning script in [`deploy/digitalocean-gpu-setup.sh`](file:///deploy/digitalocean-gpu-setup.sh) for NVIDIA GPU Droplets with Ollama + Google Gemma 2 + Faster-Whisper.
-3. **Containerized Multi-Stage Build**:
+1. **Render Cloud Deployment**:
+   - Native [`render.yaml`](file:///render.yaml) blueprint configuration for web service hosting with persistent environment bindings and automated continuous deployments on git push.
+2. **Containerized Multi-Stage Build**:
    - Production multi-stage [`Dockerfile`](file:///Dockerfile) (Node.js 20 + Python 3.11 + ffmpeg).
    - Complete [`docker-compose.yml`](file:///docker-compose.yml) stack.
-4. **Render Deployment**:
-   - Native [`render.yaml`](file:///render.yaml) blueprint configuration for web service hosting with persistent environment bindings.
 
 ---
 
@@ -142,16 +138,7 @@ Voice2Memory includes complete production deployment configurations:
   2. Add `MONGODB_URI=mongodb+srv://...` to `.env.local`.
   3. Save a memory and verify instant search filtering on `/memories`.
 
-### 3. Best Use of DigitalOcean ($200 Track)
-- **Technology Used**: DigitalOcean App Platform and DigitalOcean GPU Droplets.
-- **Feature**: Full containerized runtime for the Next.js frontend, Python Faster-Whisper transcription worker, and Ollama Gemma 2 GPU host.
-- **Why It is Necessary**: Provides high-throughput GPU inference for Gemma 2 and Whisper while hosting the responsive web client on App Platform.
-- **Judge Verification**:
-  1. Inspect [`.do/app.yaml`](file:///.do/app.yaml) for App Platform configuration.
-  2. Inspect [`deploy/digitalocean-gpu-setup.sh`](file:///deploy/digitalocean-gpu-setup.sh) for Droplet provisioning.
-  3. Inspect [`Dockerfile`](file:///Dockerfile) and [`docker-compose.yml`](file:///docker-compose.yml).
-
-### 4. ElevenLabs Voice Narration (Optional Track)
+### 3. ElevenLabs Voice Narration (Optional Track)
 - **Technology Used**: ElevenLabs Text-to-Speech API (`eleven_monolingual_v1`).
 - **Feature**: Converts Gemma-generated summaries into natural voice audio briefings via `POST /api/tts` and `VoiceSummaryPlayer.tsx`.
 - **Judge Verification**:
@@ -170,7 +157,7 @@ Voice2Memory includes complete production deployment configurations:
 | **Speech-to-Text Engine** | OpenAI Faster-Whisper (`int8` CTranslate2 with VAD filter) |
 | **Database & Search** | MongoDB Atlas / Mongoose 9 (Weighted text search) |
 | **Voice Narration** | ElevenLabs API + Web Speech API fallback |
-| **Deployment & DevOps** | DigitalOcean App Platform, Render, Docker, Docker Compose |
+| **Deployment & DevOps** | Render, Docker, Docker Compose |
 
 ---
 
@@ -237,5 +224,5 @@ npm run lint
 - **Theme**: "Build for a Friend"
 - **Primary Open-Weight Model**: Google Gemma 2 (`gemma2:2b`)
 - **Persistent Data Store**: MongoDB Atlas
-- **Cloud Deployments**: DigitalOcean App Platform & Render
+- **Cloud Deployment**: Render
 - **Pair Programming**: Antigravity AI Agent
