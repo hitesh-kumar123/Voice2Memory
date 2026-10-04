@@ -6,7 +6,7 @@ services:
     github:
       branch: main
       deploy_on_push: true
-      repo: your-username/voice2memory
+      repo: hitesh-kumar123/Voice2Memory
     http_port: 3000
     instance_count: 1
     instance_size_slug: professional-xs

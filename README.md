@@ -180,7 +180,7 @@ Voice2Memory includes full production deployment configurations for **DigitalOce
 
 ### 2. Clone & Install
 ```bash
-git clone https://github.com/your-username/voice2memory.git
+git clone https://github.com/hitesh-kumar123/Voice2Memory.git
 cd voice2memory
 npm install
 ```

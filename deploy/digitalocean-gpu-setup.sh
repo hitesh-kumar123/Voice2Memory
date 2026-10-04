@@ -20,7 +20,7 @@ ollama pull gemma2:2b
 # Clone and run Voice2Memory
 echo "=== 📦 Setting up Voice2Memory Web App ==="
 if [ ! -d "voice2memory" ]; then
-    git clone https://github.com/your-username/voice2memory.git
+    git clone https://github.com/hitesh-kumar123/Voice2Memory.git voice2memory
 fi
 
 cd voice2memory

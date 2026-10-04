@@ -125,7 +125,7 @@ Sending private voice notes to proprietary third-party cloud APIs poses real pri
 
 ## 🔗 Repository & Links
 
-- **GitHub Repository**: [Voice2Memory on GitHub](https://github.com/your-username/voice2memory)
+- **GitHub Repository**: [Voice2Memory on GitHub](https://github.com/hitesh-kumar123/Voice2Memory)
 - **DEV Challenge**: [Hacktoberfest 2026 DEV Weekend Challenge: "Build for a Friend"](https://dev.to/challenges/hacktoberfest-2026-1)
 - **Google Gemma 2**: [ai.google.dev/gemma](https://ai.google.dev/gemma)
 - **MongoDB Atlas**: [mongodb.com/atlas](https://www.mongodb.com/atlas)
