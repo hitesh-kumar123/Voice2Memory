@@ -5,6 +5,7 @@ export interface IMemory extends Document {
   summary: string;
   transcript: string;
   tasks: string[];
+  completedTasks: string[];
   importantDates: string[];
   dates: string[];
   people: string[];
@@ -33,6 +34,10 @@ const MemorySchema = new Schema<IMemory>(
       required: [true, "Transcript is required"],
     },
     tasks: {
+      type: [String],
+      default: [],
+    },
+    completedTasks: {
       type: [String],
       default: [],
     },
@@ -66,13 +71,28 @@ const MemorySchema = new Schema<IMemory>(
 );
 
 // Search indexes for title, summary, transcript, topics, people
-MemorySchema.index({
-  title: "text",
-  summary: "text",
-  transcript: "text",
-  topics: "text",
-  people: "text",
-});
+MemorySchema.index(
+  {
+    title: "text",
+    summary: "text",
+    transcript: "text",
+    topics: "text",
+    people: "text",
+  },
+  {
+    weights: {
+      title: 10,
+      topics: 5,
+      summary: 4,
+      people: 3,
+      transcript: 1,
+    },
+    name: "MemoryTextIndex",
+  }
+);
+
+// Compound index for chronological timeline querying and topic filtering
+MemorySchema.index({ createdAt: -1, topics: 1 });
 
 export const MemoryModel: Model<IMemory> =
   mongoose.models.Memory || mongoose.model<IMemory>("Memory", MemorySchema);

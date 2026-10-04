@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { AudioSource, AnalysisResult, TranscriptResult } from "@/types";
+import VoiceSummaryPlayer from "@/components/ui/VoiceSummaryPlayer";
 
 interface StructuredMemoryResultProps {
   source: AudioSource;
@@ -27,6 +28,7 @@ export default function StructuredMemoryResult({
 }: StructuredMemoryResultProps) {
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [copiedTranscript, setCopiedTranscript] = useState(false);
+  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
   const [checkedTasks, setCheckedTasks] = useState<Record<number, boolean>>({});
 
   const handleCopySummary = async () => {
@@ -51,11 +53,56 @@ export default function StructuredMemoryResult({
     }
   };
 
+  const handleExportMarkdown = async () => {
+    const datesList = analysisData.importantDates || analysisData.dates || [];
+    const md = `# ${analysisData.title || "Voice Memory"}
+
+**Extracted with:** Google Gemma 2 (Open-Weight AI) & OpenAI Whisper
+**Date:** ${new Date().toLocaleDateString()}
+
+## 📝 Summary
+${analysisData.summary}
+
+## ✅ Actionable Tasks
+${
+  analysisData.tasks && analysisData.tasks.length > 0
+    ? analysisData.tasks.map((t) => `- [ ] ${t}`).join("\n")
+    : "_No actionable tasks detected._"
+}
+
+## 📅 Important Dates & Times
+${
+  datesList.length > 0
+    ? datesList.map((d) => `- ${d}`).join("\n")
+    : "_None mentioned._"
+}
+
+## 👤 People Mentioned
+${
+  analysisData.people && analysisData.people.length > 0
+    ? analysisData.people.map((p) => `- ${p}`).join("\n")
+    : "_None mentioned._"
+}
+
+## 🎙️ Full Transcript
+> ${transcriptData.transcript}
+`;
+
+    try {
+      await navigator.clipboard.writeText(md);
+      setCopiedMarkdown(true);
+      setTimeout(() => setCopiedMarkdown(false), 2000);
+    } catch {
+      // Fallback
+    }
+  };
+
   const toggleTask = (index: number) => {
     setCheckedTasks((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
   const datesList = analysisData.importantDates || analysisData.dates || [];
+  const modelBadge = analysisData.modelUsed || "Google Gemma 2 (2B)";
 
   return (
     <div
@@ -63,7 +110,7 @@ export default function StructuredMemoryResult({
       role="region"
       aria-label="Structured memory analysis result"
     >
-      {/* Header bar with Status & Actions */}
+      {/* Header bar with Status, Gemma 2 Badge & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-secondary/80 border border-border">
         <div className="flex items-center gap-3 min-w-0">
           <div
@@ -85,8 +132,11 @@ export default function StructuredMemoryResult({
           </div>
         </div>
 
-        {/* Audio metadata pill */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground self-start sm:self-center">
+        {/* AI & Audio metadata pills */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground self-start sm:self-center flex-wrap">
+          <span className="px-2.5 py-1 rounded-md bg-primary/10 text-primary font-medium text-[11px] flex items-center gap-1">
+            <span>🧠</span> {modelBadge}
+          </span>
           {transcriptData.language && (
             <span className="px-2 py-0.5 rounded bg-accent font-mono font-medium uppercase text-accent-foreground text-[11px]">
               {transcriptData.language}
@@ -102,7 +152,6 @@ export default function StructuredMemoryResult({
 
       {/* Main Memory Card */}
       <div className="flex flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden divide-y divide-border">
-        
         {/* Title & Topics Section */}
         <div className="p-6 flex flex-col gap-3">
           {analysisData.topics && analysisData.topics.length > 0 && (
@@ -123,20 +172,23 @@ export default function StructuredMemoryResult({
           </h2>
         </div>
 
-        {/* Summary Section */}
-        <div className="p-6 flex flex-col gap-2 bg-secondary/20">
-          <div className="flex items-center justify-between">
+        {/* Summary Section with TTS Voice Player */}
+        <div className="p-6 flex flex-col gap-3 bg-secondary/20">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <span>📝</span> Summary
             </span>
-            <button
-              type="button"
-              onClick={handleCopySummary}
-              aria-label="Copy summary text"
-              className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
-            >
-              {copiedSummary ? "Copied!" : "Copy summary"}
-            </button>
+            <div className="flex items-center gap-3">
+              <VoiceSummaryPlayer text={analysisData.summary} label="Listen to summary" />
+              <button
+                type="button"
+                onClick={handleCopySummary}
+                aria-label="Copy summary text"
+                className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
+              >
+                {copiedSummary ? "Copied!" : "Copy"}
+              </button>
+            </div>
           </div>
           <p className="text-base text-foreground leading-relaxed">
             {analysisData.summary}
@@ -149,6 +201,13 @@ export default function StructuredMemoryResult({
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <span>✅</span> Actionable Tasks ({analysisData.tasks?.length || 0})
             </span>
+            <button
+              type="button"
+              onClick={handleExportMarkdown}
+              className="text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              {copiedMarkdown ? "✓ Copied as Markdown!" : "Export Markdown"}
+            </button>
           </div>
 
           {analysisData.tasks && analysisData.tasks.length > 0 ? (
@@ -267,7 +326,10 @@ export default function StructuredMemoryResult({
 
       {/* Save feedback error */}
       {saveError && (
-        <div role="alert" className="p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-xs text-destructive">
+        <div
+          role="alert"
+          className="p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-xs text-destructive"
+        >
           {saveError}
         </div>
       )}
@@ -300,11 +362,11 @@ export default function StructuredMemoryResult({
             {isSaving ? (
               <>
                 <span className="w-4 h-4 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
-                Saving memory…
+                Saving to MongoDB Atlas…
               </>
             ) : isSaved ? (
               <>
-                <span>✓</span> Memory Saved to Database
+                <span>✓</span> Memory Saved to MongoDB Atlas
               </>
             ) : (
               <>

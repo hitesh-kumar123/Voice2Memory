@@ -1,12 +1,13 @@
 // ─── Core domain types for Voice2Memory ──────────────────────────────────
 
-/** A single extracted memory, stored in MongoDB */
+/** A single extracted memory, stored in MongoDB Atlas */
 export interface Memory {
   _id?: string;
   title: string;
   transcript: string;
   summary: string;
   tasks: string[];
+  completedTasks?: string[];
   dates: string[];
   importantDates?: string[];
   people: string[];
@@ -35,7 +36,7 @@ export interface TranscriptResult {
   error?: string;
 }
 
-/** What the Ollama analysis API route returns */
+/** What the Gemma/Ollama analysis API route returns */
 export interface AnalysisResult {
   success?: boolean;
   title: string;
@@ -45,6 +46,16 @@ export interface AnalysisResult {
   importantDates?: string[];
   people: string[];
   topics: string[];
+  modelUsed?: string;
+  error?: string;
+}
+
+/** What the TTS API route returns */
+export interface TTSResult {
+  success: boolean;
+  audioUrl?: string;
+  audioBase64?: string;
+  provider?: "elevenlabs" | "webspeech" | "none";
   error?: string;
 }
 

@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  # Voice2Memory Web Application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: voice2memory-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/voice2memory
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=gemma2:2b
+    depends_on:
+      - mongo
+      - ollama
+    restart: unless-stopped
+
+  # Ollama Open-Weight LLM Runtime (Google Gemma 2)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: voice2memory-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  # MongoDB Database (Or point to MongoDB Atlas via MONGODB_URI)
+  mongo:
+    image: mongo:7.0
+    container_name: voice2memory-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  mongo_data:

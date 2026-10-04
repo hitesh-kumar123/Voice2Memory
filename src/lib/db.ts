@@ -20,8 +20,11 @@ if (!global.mongooseCache) {
   global.mongooseCache = cached;
 }
 
+/**
+ * Connects to MongoDB / MongoDB Atlas with resilient connection pooling.
+ */
 export async function connectToDatabase(): Promise<typeof mongoose> {
-  if (cached.conn) {
+  if (cached.conn && cached.conn.connection.readyState === 1) {
     return cached.conn;
   }
 
@@ -29,15 +32,21 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
     const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
       serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      minPoolSize: 2,
     };
 
     cached.promise = mongoose
       .connect(MONGODB_URI, opts)
       .then((m) => {
+        const isAtlas = MONGODB_URI.includes("mongodb+srv://") || MONGODB_URI.includes("mongodb.net");
+        console.log(`[MongoDB] Connected successfully to ${isAtlas ? "MongoDB Atlas" : "Local MongoDB"}`);
         return m;
       })
       .catch((err) => {
         cached.promise = null;
+        console.error("[MongoDB Connection Error]:", err.message);
         throw err;
       });
   }
@@ -50,4 +59,38 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
   }
 
   return cached.conn;
+}
+
+/**
+ * Returns database health and metadata.
+ */
+export async function getDatabaseStatus(): Promise<{
+  connected: boolean;
+  isAtlas: boolean;
+  readyState: number;
+  databaseName?: string;
+  host?: string;
+  error?: string;
+}> {
+  try {
+    const mongooseInstance = await connectToDatabase();
+    const conn = mongooseInstance.connection;
+    const isAtlas = MONGODB_URI.includes("mongodb+srv://") || MONGODB_URI.includes("mongodb.net");
+
+    return {
+      connected: conn.readyState === 1,
+      isAtlas,
+      readyState: conn.readyState,
+      databaseName: conn.name,
+      host: conn.host,
+    };
+  } catch (err: unknown) {
+    const isAtlas = MONGODB_URI.includes("mongodb+srv://") || MONGODB_URI.includes("mongodb.net");
+    return {
+      connected: false,
+      isAtlas,
+      readyState: 0,
+      error: err instanceof Error ? err.message : "MongoDB connection failed",
+    };
+  }
 }

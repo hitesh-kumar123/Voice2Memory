@@ -1,10 +1,12 @@
 import type { AnalysisResult } from "@/types";
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5:1.5b";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "gemma2:2b";
+const GEMMA_API_BASE = process.env.GEMMA_API_BASE || process.env.OPENAI_API_BASE;
+const GEMMA_API_KEY = process.env.GEMMA_API_KEY || process.env.OPENAI_API_KEY;
 
-const SYSTEM_PROMPT = `You are an expert AI Memory Extraction engine for Voice2Memory.
-Your job is to analyze a spoken voice note transcript and extract structured personal memory items.
+const SYSTEM_PROMPT = `You are an expert AI Memory Extraction engine for Voice2Memory powered by Google Gemma 2.
+Your mission is to analyze a spoken voice note transcript and extract structured personal memory items.
 
 CRITICAL EXTRACTION RULES:
 1. ONLY extract information that is explicitly stated or directly inferred from the transcript.
@@ -29,14 +31,25 @@ Schema:
 }`;
 
 /**
- * Checks if the local Ollama server is running and reachable.
+ * Checks if the local Ollama / Gemma server is running and reachable.
  */
 export async function checkOllamaHealth(): Promise<{
   available: boolean;
   models: string[];
   selectedModel: string;
+  provider: string;
   error?: string;
 }> {
+  // If remote OpenAI-compatible Gemma endpoint is configured
+  if (GEMMA_API_BASE) {
+    return {
+      available: true,
+      models: [OLLAMA_MODEL],
+      selectedModel: OLLAMA_MODEL,
+      provider: "OpenAI-compatible Gemma Endpoint",
+    };
+  }
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
@@ -52,6 +65,7 @@ export async function checkOllamaHealth(): Promise<{
         available: false,
         models: [],
         selectedModel: OLLAMA_MODEL,
+        provider: "Ollama Local (Gemma 2)",
         error: `Ollama returned status ${res.status}`,
       };
     }
@@ -65,12 +79,14 @@ export async function checkOllamaHealth(): Promise<{
       available: true,
       models,
       selectedModel: OLLAMA_MODEL,
+      provider: "Ollama Local (Google Gemma 2)",
     };
   } catch (err: unknown) {
     return {
       available: false,
       models: [],
       selectedModel: OLLAMA_MODEL,
+      provider: "Ollama Local (Google Gemma 2)",
       error: err instanceof Error ? err.message : "Ollama connection failed",
     };
   }
@@ -115,7 +131,10 @@ function cleanAndParseJson(text: string): Record<string, unknown> {
 /**
  * Validates and normalizes the parsed JSON into an AnalysisResult.
  */
-export function validateAndNormalizeMemory(raw: Record<string, unknown>): AnalysisResult {
+export function validateAndNormalizeMemory(
+  raw: Record<string, unknown>,
+  modelUsed: string = OLLAMA_MODEL
+): AnalysisResult {
   const title =
     typeof raw.title === "string" && raw.title.trim()
       ? raw.title.trim()
@@ -133,10 +152,12 @@ export function validateAndNormalizeMemory(raw: Record<string, unknown>): Analys
       .filter((s) => s.length > 0);
   };
 
-  const tasks = toCleanStringArray(raw.tasks);
-  const importantDates = toCleanStringArray(raw.importantDates || raw.dates);
-  const people = toCleanStringArray(raw.people);
-  const topics = toCleanStringArray(raw.topics);
+  const tasks = toCleanStringArray(raw.tasks || raw.actionItems || raw.action_items);
+  const importantDates = toCleanStringArray(
+    raw.importantDates || raw.important_dates || raw.dates
+  );
+  const people = toCleanStringArray(raw.people || raw.persons || raw.names);
+  const topics = toCleanStringArray(raw.topics || raw.tags || raw.categories);
 
   return {
     success: true,
@@ -147,17 +168,18 @@ export function validateAndNormalizeMemory(raw: Record<string, unknown>): Analys
     importantDates,
     people,
     topics: topics.length > 0 ? topics : ["General"],
+    modelUsed,
   };
 }
 
 /**
- * Fallback heuristic extractor if LLM is offline or fails, ensuring no crashes.
+ * Fallback heuristic extractor if LLM is offline or fails, ensuring zero UI crashes.
  */
 export function extractHeuristicMemory(transcript: string): AnalysisResult {
   const clean = transcript.trim();
   const words = clean.split(/\s+/).filter(Boolean);
-  
-  const title = words.length > 0 ? words.slice(0, 6).join(" ") + "..." : "Voice Note";
+
+  const title = words.length > 0 ? words.slice(0, 6).join(" ") + "…" : "Voice Note";
   const summary = clean.length > 0 ? clean : "No transcript available.";
 
   // Simple task detection
@@ -165,7 +187,7 @@ export function extractHeuristicMemory(transcript: string): AnalysisResult {
   const lines = clean.split(/[.!?\n]+/).map((l) => l.trim()).filter(Boolean);
   for (const line of lines) {
     if (
-      /^(need to|have to|must|remember to|call|send|buy|meet|finish|prepare|review|schedule)/i.test(
+      /^(need to|have to|must|remember to|call|send|buy|meet|finish|prepare|review|schedule|follow up|order)/i.test(
         line
       )
     ) {
@@ -176,7 +198,7 @@ export function extractHeuristicMemory(transcript: string): AnalysisResult {
   // Simple date detection
   const dates: string[] = [];
   const dateMatches = clean.match(
-    /\b(today|tomorrow|yesterday|monday|tuesday|wednesday|thursday|friday|saturday|sunday|morning|afternoon|evening|night|next week|at \d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b/gi
+    /\b(today|tomorrow|yesterday|monday|tuesday|wednesday|thursday|friday|saturday|sunday|morning|afternoon|evening|night|next week|at \d{1,2}(?::\d{2})?\s*(?:am|pm)?|oct \d{1,2}|nov \d{1,2}|dec \d{1,2})\b/gi
   );
   if (dateMatches) {
     dates.push(...Array.from(new Set(dateMatches.map((d) => d.trim()))));
@@ -191,11 +213,13 @@ export function extractHeuristicMemory(transcript: string): AnalysisResult {
     importantDates: dates,
     people: [],
     topics: ["Voice Note"],
+    modelUsed: "heuristic-fallback",
   };
 }
 
 /**
- * Sends a transcript to Ollama for structured memory extraction.
+ * Sends a transcript to Google Gemma 2 (via Ollama or remote OpenAI-compatible API)
+ * for structured memory extraction.
  */
 export async function analyzeTranscriptWithOllama(
   transcript: string,
@@ -212,17 +236,65 @@ export async function analyzeTranscriptWithOllama(
       importantDates: [],
       people: [],
       topics: [],
+      modelUsed: "none",
       error: "Empty transcript",
     };
   }
 
   const modelToUse = modelOverride || OLLAMA_MODEL;
 
+  // 1. Remote OpenAI-compatible Gemma Endpoint (e.g. DigitalOcean GPU droplet or Hugging Face)
+  if (GEMMA_API_BASE) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
+
+      const endpoint = `${GEMMA_API_BASE.replace(/\/+$/, "")}/chat/completions`;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(GEMMA_API_KEY ? { Authorization: `Bearer ${GEMMA_API_KEY}` } : {}),
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: `Spoken Voice Note Transcript:\n"${trimmed}"\n\nExtract the structured memory JSON now:`,
+            },
+          ],
+          temperature: 0.1,
+          response_format: { type: "json_object" },
+        }),
+      });
+
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content || "";
+        if (content) {
+          const parsed = cleanAndParseJson(content);
+          return validateAndNormalizeMemory(parsed, `Gemma 2 (${modelToUse})`);
+        }
+      }
+    } catch (err) {
+      console.warn(
+        `[Remote Gemma Notice]: ${err instanceof Error ? err.message : "Remote error"}. Trying local Ollama...`
+      );
+    }
+  }
+
+  // 2. Local Ollama Gemma 2 pipeline with Gemma prompt templating
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 45000); // 45s timeout
 
-    const promptText = `Transcript to analyze:\n"${trimmed}"\n\nExtract the structured memory JSON now:`;
+    // Gemma 2 instruction formatting for optimal token attention
+    const promptText = `<start_of_turn>user\n${SYSTEM_PROMPT}\n\nSpoken Voice Note Transcript:\n"${trimmed}"\n\nExtract the structured memory JSON now:<end_of_turn>\n<start_of_turn>model\n`;
 
     const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
       method: "POST",
@@ -258,14 +330,18 @@ export async function analyzeTranscriptWithOllama(
     }
 
     const parsedJson = cleanAndParseJson(rawResponseText);
-    return validateAndNormalizeMemory(parsedJson);
+    return validateAndNormalizeMemory(parsedJson, `Google Gemma 2 (${modelToUse})`);
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "Failed to analyze transcript with Ollama";
-    console.warn(`[Ollama Analysis Notice]: ${errorMsg}. Falling back to safe heuristic extraction.`);
-    
+    const errorMsg =
+      err instanceof Error ? err.message : "Failed to analyze transcript with Gemma 2";
+    console.warn(
+      `[Gemma 2 Analysis Notice]: ${errorMsg}. Falling back to safe heuristic extraction.`
+    );
+
     const fallback = extractHeuristicMemory(transcript);
     return {
       ...fallback,
+      modelUsed: `Heuristic Fallback (${modelToUse} offline)`,
       error: `Local LLM (${modelToUse}) notice: ${errorMsg}`,
     };
   }

@@ -204,8 +204,8 @@ export default function TranscriptView({ source, onReset }: TranscriptViewProps)
         desc: "Running local Whisper AI model to generate high-accuracy transcript.",
       },
       analyzing: {
-        title: "Analyzing with Ollama (Qwen2.5)…",
-        desc: "Extracting actionable tasks, important dates, people, and topics.",
+        title: "Structuring with Google Gemma 2…",
+        desc: "Running open-weight Gemma 2 model to extract actionable tasks, dates, people, and topics.",
       },
     }[stage];
 

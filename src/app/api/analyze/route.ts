@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       dates: result.dates || result.importantDates,
       people: result.people,
       topics: result.topics,
+      modelUsed: result.modelUsed,
       error: result.error,
     });
   } catch (err: unknown) {

@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: voice2memory
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: standard
+    region: oregon
+    branch: main
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # Set to MongoDB Atlas connection string
+      - key: OLLAMA_BASE_URL
+        sync: false # Set to remote Gemma 2 endpoint / DigitalOcean Droplet
+      - key: OLLAMA_MODEL
+        value: gemma2:2b
+      - key: ELEVENLABS_API_KEY
+        sync: false # Optional ElevenLabs API Key

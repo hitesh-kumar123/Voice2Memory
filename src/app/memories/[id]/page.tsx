@@ -7,6 +7,7 @@ import { formatMemoryDate } from "@/lib/mockData";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import VoiceSummaryPlayer from "@/components/ui/VoiceSummaryPlayer";
 
 interface MemoryDetailPageProps {
   params: Promise<{ id: string }>;
@@ -21,7 +22,8 @@ export default function MemoryDetailPage({ params }: MemoryDetailPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [copiedTranscript, setCopiedTranscript] = useState(false);
-  const [checkedTasks, setCheckedTasks] = useState<Record<number, boolean>>({});
+  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+  const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -34,6 +36,13 @@ export default function MemoryDetailPage({ params }: MemoryDetailPageProps) {
         const data = await res.json();
         if (res.ok && data.success && data.memory) {
           setMemory(data.memory);
+          // Initialize completed tasks from memory
+          const completed = data.memory.completedTasks || [];
+          const initialChecked: Record<string, boolean> = {};
+          completed.forEach((t: string) => {
+            initialChecked[t] = true;
+          });
+          setCheckedTasks(initialChecked);
         } else {
           setError(data.error || "Memory not found.");
         }
@@ -71,8 +80,70 @@ export default function MemoryDetailPage({ params }: MemoryDetailPageProps) {
     }
   };
 
-  const toggleTask = (index: number) => {
-    setCheckedTasks((prev) => ({ ...prev, [index]: !prev[index] }));
+  const handleExportMarkdown = async () => {
+    if (!memory) return;
+    const datesList = memory.importantDates || memory.dates || [];
+    const md = `# ${memory.title}
+
+**Extracted via:** Google Gemma 2 (Open-Weight AI) & OpenAI Whisper
+**Persistent Store:** MongoDB Atlas
+**Recorded Date:** ${new Date(memory.createdAt).toLocaleDateString()}
+
+## 📝 Summary
+${memory.summary}
+
+## ✅ Actionable Tasks
+${
+  memory.tasks && memory.tasks.length > 0
+    ? memory.tasks
+        .map((t) => `- [${checkedTasks[t] ? "x" : " "}] ${t}`)
+        .join("\n")
+    : "_No actionable tasks recorded._"
+}
+
+## 📅 Important Dates & Times
+${
+  datesList.length > 0
+    ? datesList.map((d) => `- ${d}`).join("\n")
+    : "_None mentioned._"
+}
+
+## 👤 People Mentioned
+${
+  memory.people && memory.people.length > 0
+    ? memory.people.map((p) => `- ${p}`).join("\n")
+    : "_None mentioned._"
+}
+
+## 🎙️ Full Transcript
+> ${memory.transcript}
+`;
+
+    try {
+      await navigator.clipboard.writeText(md);
+      setCopiedMarkdown(true);
+      setTimeout(() => setCopiedMarkdown(false), 2000);
+    } catch {
+      // Fallback
+    }
+  };
+
+  const toggleTask = async (taskText: string) => {
+    const nextState = !checkedTasks[taskText];
+    const updated = { ...checkedTasks, [taskText]: nextState };
+    setCheckedTasks(updated);
+
+    // Persist completed tasks to MongoDB Atlas
+    const completedList = Object.keys(updated).filter((k) => updated[k]);
+    try {
+      await fetch(`/api/memories/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completedTasks: completedList }),
+      });
+    } catch (err) {
+      console.error("Failed to persist task state:", err);
+    }
   };
 
   const handleDelete = async () => {
@@ -109,14 +180,23 @@ export default function MemoryDetailPage({ params }: MemoryDetailPageProps) {
           </Link>
 
           {memory && (
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(true)}
-              aria-label="Delete this memory"
-              className="text-xs font-medium text-destructive hover:underline inline-flex items-center gap-1"
-            >
-              Delete memory
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleExportMarkdown}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                {copiedMarkdown ? "✓ Copied Markdown" : "Export Markdown"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                aria-label="Delete this memory"
+                className="text-xs font-medium text-destructive hover:underline inline-flex items-center gap-1"
+              >
+                Delete
+              </button>
+            </div>
           )}
         </div>
 
@@ -130,7 +210,10 @@ export default function MemoryDetailPage({ params }: MemoryDetailPageProps) {
 
         {/* Error State */}
         {!loading && error && (
-          <div role="alert" className="p-8 rounded-2xl border border-border bg-card text-center flex flex-col items-center gap-3">
+          <div
+            role="alert"
+            className="p-8 rounded-2xl border border-border bg-card text-center flex flex-col items-center gap-3"
+          >
             <h2 className="text-lg font-semibold text-foreground">Memory not found</h2>
             <p className="text-xs text-muted-foreground max-w-xs">{error}</p>
             <Link
@@ -165,6 +248,10 @@ export default function MemoryDetailPage({ params }: MemoryDetailPageProps) {
                     </span>
                   </>
                 )}
+                <span>·</span>
+                <span className="px-2 py-0.5 rounded bg-primary/10 text-primary font-medium text-[11px]">
+                  🧠 Google Gemma 2
+                </span>
               </div>
 
               <h1 className="text-3xl font-bold tracking-tight text-foreground leading-tight">
@@ -185,39 +272,47 @@ export default function MemoryDetailPage({ params }: MemoryDetailPageProps) {
               )}
             </div>
 
-            {/* Summary Box */}
-            <div className="p-6 rounded-2xl bg-secondary/30 border border-border flex flex-col gap-2">
-              <div className="flex items-center justify-between">
+            {/* Summary Box with TTS Narration */}
+            <div className="p-6 rounded-2xl bg-secondary/30 border border-border flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <span>📝</span> Summary
                 </span>
-                <button
-                  type="button"
-                  onClick={handleCopySummary}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  {copiedSummary ? "Copied!" : "Copy summary"}
-                </button>
+                <div className="flex items-center gap-3">
+                  <VoiceSummaryPlayer text={memory.summary} label="Listen to summary" />
+                  <button
+                    type="button"
+                    onClick={handleCopySummary}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    {copiedSummary ? "Copied!" : "Copy"}
+                  </button>
+                </div>
               </div>
               <p className="text-base text-foreground leading-relaxed">
                 {memory.summary}
               </p>
             </div>
 
-            {/* Tasks Section */}
+            {/* Tasks Section with Interactive Persistence */}
             <div className="p-6 rounded-2xl bg-card border border-border flex flex-col gap-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <span>✅</span> Actionable Tasks ({memory.tasks?.length || 0})
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <span>✅</span> Actionable Tasks ({memory.tasks?.length || 0})
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Saved to MongoDB Atlas
+                </span>
+              </div>
 
               {memory.tasks && memory.tasks.length > 0 ? (
                 <ul className="flex flex-col gap-2">
                   {memory.tasks.map((task, idx) => {
-                    const isDone = !!checkedTasks[idx];
+                    const isDone = !!checkedTasks[task];
                     return (
                       <li
                         key={idx}
-                        onClick={() => toggleTask(idx)}
+                        onClick={() => toggleTask(task)}
                         className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none ${
                           isDone
                             ? "bg-secondary/40 border-border/50 text-muted-foreground line-through"
@@ -227,7 +322,7 @@ export default function MemoryDetailPage({ params }: MemoryDetailPageProps) {
                         <input
                           type="checkbox"
                           checked={isDone}
-                          onChange={() => toggleTask(idx)}
+                          onChange={() => toggleTask(task)}
                           className="mt-0.5 rounded text-primary focus:ring-primary h-4 w-4 shrink-0"
                           aria-label={`Task: ${task}`}
                         />
@@ -328,11 +423,14 @@ export default function MemoryDetailPage({ params }: MemoryDetailPageProps) {
                   ⚠️
                 </div>
                 <div>
-                  <h3 id="delete-dialog-title" className="font-semibold text-foreground text-base">
+                  <h3
+                    id="delete-dialog-title"
+                    className="font-semibold text-foreground text-base"
+                  >
                     Delete this memory?
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    This action cannot be undone.
+                    This action will remove the record from MongoDB Atlas.
                   </p>
                 </div>
               </div>

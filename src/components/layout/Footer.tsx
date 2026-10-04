@@ -11,12 +11,12 @@ export default function Footer() {
             <span className="text-xs text-muted-foreground/60">·</span>
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              100% Local Open-Source AI
+              100% Open-Weight AI (Gemma 2)
             </span>
           </div>
           <p className="text-xs text-muted-foreground max-w-md leading-relaxed mt-0.5">
-            Voice2Memory uses local Whisper for speech-to-text and Ollama for memory extraction,
-            keeping your personal voice recordings and private memories completely on your device.
+            Voice2Memory pairs faster-whisper speech transcription with Google Gemma 2 open-weight LLM
+            and MongoDB Atlas persistent indexing — giving your friend private, structured personal memory.
           </p>
         </div>
 
